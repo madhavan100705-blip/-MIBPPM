@@ -1,0 +1,1 @@
+Trained model artifacts and evaluation outputs are written here. Do not commit sensitive or licensed datasets.\n

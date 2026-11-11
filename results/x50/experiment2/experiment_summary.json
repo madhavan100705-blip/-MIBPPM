@@ -1,0 +1,27 @@
+{
+  "experiment": "Experiment 2",
+  "records": 85,
+  "sites": 8,
+  "features": [
+    "S_over_B",
+    "H_over_B",
+    "B_over_D",
+    "T_over_B",
+    "Pf_kg_m3",
+    "XB_m",
+    "E_GPa"
+  ],
+  "target": "x50_m",
+  "validation": "LeaveOneGroupOut by site",
+  "models": [
+    "Linear Regression - Log X50",
+    "Linear Regression",
+    "XGBoost - Log X50",
+    "Random Forest - Log X50",
+    "Mean baseline",
+    "Random Forest",
+    "XGBoost"
+  ],
+  "duplicate_policy": "No records removed",
+  "warning": "Small research benchmark. Site-wise validation estimates performance on unseen sites represented by this dataset; it does not prove generalisation to all mines."
+}

@@ -1,0 +1,6 @@
+Target,Shapiro_Statistic,Shapiro_P_Value,N,Interpretation
+Crusher Productivity (t/h),0.9721046806934271,0.34441997575884614,45,No significant evidence against normality
+Flyrock (m),0.9446192421327516,0.031882154347966714,45,Evidence against normality at 5% level
+P80 (mm),0.9627367018684079,0.15527040711414647,45,No significant evidence against normality
+PPV (mm/s),0.9164889857500985,0.0032215076065465137,45,Evidence against normality at 5% level
+SBPI,0.9837772600269659,0.7728765900182297,45,No significant evidence against normality

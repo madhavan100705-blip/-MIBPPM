@@ -1,0 +1,21 @@
+Mathematical_Model,Required_Information,Status
+P80 - Kuznetsov/Rosin-Rammler,Burden,MISSING
+P80 - Kuznetsov/Rosin-Rammler,Spacing,MISSING
+P80 - Kuznetsov/Rosin-Rammler,Bench height,MISSING
+P80 - Kuznetsov/Rosin-Rammler,Charge mass,MISSING
+P80 - Kuznetsov/Rosin-Rammler,Rock factor,MISSING
+P80 - Kuznetsov/Rosin-Rammler,Uniformity index,MISSING
+PPV - Scaled distance,Maximum charge per delay,MISSING
+PPV - Scaled distance,Monitoring distance,MISSING
+PPV - Scaled distance,Site constants K and beta,MISSING
+Flyrock - Empirical models,Charge mass,MISSING
+Flyrock - Empirical models,Burden,MISSING
+Flyrock - Empirical models,Stemming,MISSING
+Flyrock - Empirical models,Site calibration constants,MISSING
+Crusher productivity,Crusher capacity,MISSING
+Crusher productivity,Feed size,MISSING
+Crusher productivity,Operating hours,MISSING
+Crusher productivity,Equipment availability,MISSING
+SBPI,Original SBPI equation,MISSING
+SBPI,Indicator weights,MISSING
+SBPI,Normalization method,MISSING

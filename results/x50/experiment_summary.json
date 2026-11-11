@@ -1,0 +1,18 @@
+{
+  "dataset": "C:\\Users\\madhavan.s\\Downloads\\MIBPPM_research_prototype\\MIBPPM\\data\\raw\\caos_surface_confirmed.csv",
+  "records": 85,
+  "sites": 8,
+  "features": [
+    "S_over_B",
+    "H_over_B",
+    "B_over_D",
+    "T_over_B",
+    "Pf_kg_m3",
+    "XB_m",
+    "E_GPa"
+  ],
+  "target": "x50_m",
+  "repeated_feature_target_rows": 2,
+  "validation": "LeaveOneGroupOut by site",
+  "warning": "Research benchmark only. Small dataset; results are not proof of generalisation to unseen mines."
+}

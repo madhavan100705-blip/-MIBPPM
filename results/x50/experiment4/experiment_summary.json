@@ -1,0 +1,53 @@
+{
+  "experiment": "Experiment 4: mathematical vs AI X50",
+  "records": 85,
+  "sites": [
+    "Akdaglar",
+    "Dongri-Buzurg",
+    "Enusa",
+    "Mrica",
+    "Murgul",
+    "Ozmert",
+    "Reocin",
+    "Soma"
+  ],
+  "ai_model": "Linear Regression",
+  "ai_validation": "Existing leave-one-site-out out-of-fold predictions from Experiment 2.",
+  "mathematical_method": "Kuznetsov X50 using reconstructed pattern geometry and site-specific back-solved rock factors.",
+  "factor_caveat": "2010 and 2012 rock factors are back-solved from published predictions, not independently measured.",
+  "geometry_caveats": [
+    "Soma has an unresolved burden/diameter conflict.",
+    "Miami is not included in the selected surface dataset.",
+    "2010-derived factor is unavailable for Reocin."
+  ],
+  "metrics": [
+    {
+      "n": 85,
+      "MAE_m": 0.11335518723673914,
+      "RMSE_m": 0.15618756887591287,
+      "R2": 0.19307419041895868,
+      "model": "Kuznetsov 2012-derived factor",
+      "coverage_n": 85,
+      "dataset_n": 85
+    },
+    {
+      "n": 75,
+      "MAE_m": 0.1180834308955998,
+      "RMSE_m": 0.15771915960535957,
+      "R2": -0.6270203470900289,
+      "model": "Kuznetsov 2010-derived factor",
+      "coverage_n": 75,
+      "dataset_n": 85
+    },
+    {
+      "n": 85,
+      "MAE_m": 0.11789837400320162,
+      "RMSE_m": 0.15653133754401166,
+      "R2": 0.18951819570374806,
+      "model": "Linear Regression (LOSO OOF)",
+      "coverage_n": 85,
+      "dataset_n": 85
+    }
+  ],
+  "interpretation_warning": "Prediction coverage differs between methods. Compare coverage before interpreting the metrics. This is not independent validation of Kuznetsov."
+}

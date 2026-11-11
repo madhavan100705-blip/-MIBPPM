@@ -1,0 +1,57 @@
+{
+  "experiment": "Experiment 5 - Hybrid Mathematics and AI",
+  "records": 85,
+  "sites": 8,
+  "validation": "Leave-One-Site-Out",
+  "target": "x50_m",
+  "mathematical_baseline": "Kuznetsov 2012-derived site factor",
+  "ai_baseline": "Existing Linear Regression LOSO out-of-fold predictions",
+  "hybrid_method": "AI predicts the residual between actual X50 and Kuznetsov mathematical X50.",
+  "hybrid_validation": "Residual models are retrained inside each LOSO fold. The held-out site's measurements are not used for training.",
+  "ensemble_method": "Fixed 50:50 average of mathematical and existing AI predictions.",
+  "best_model_by_mae": "50:50 Mathematics-AI Ensemble",
+  "metrics": [
+    {
+      "n": 85,
+      "MAE_m": 0.11335518723673914,
+      "RMSE_m": 0.1561875688759129,
+      "R2": 0.19307419041895857,
+      "model": "Kuznetsov 2012"
+    },
+    {
+      "n": 85,
+      "MAE_m": 0.11789837400320162,
+      "RMSE_m": 0.15653133754401166,
+      "R2": 0.18951819570374806,
+      "model": "Linear Regression AI"
+    },
+    {
+      "n": 85,
+      "MAE_m": 0.1431670837937117,
+      "RMSE_m": 0.1829999071067658,
+      "R2": -0.10775167454362977,
+      "model": "Hybrid Ridge Correction"
+    },
+    {
+      "n": 85,
+      "MAE_m": 0.09443346192841424,
+      "RMSE_m": 0.13803916457358553,
+      "R2": 0.3697028823126516,
+      "model": "Hybrid Random Forest Correction"
+    },
+    {
+      "n": 85,
+      "MAE_m": 0.09292763321383411,
+      "RMSE_m": 0.12914922331047296,
+      "R2": 0.448272953711382,
+      "model": "50:50 Mathematics-AI Ensemble"
+    }
+  ],
+  "limitations": [
+    "Only 85 records from eight sites are available.",
+    "The mathematical rock factors were back-solved from published predictions.",
+    "The existing AI predictions are out-of-fold predictions from Experiment 2.",
+    "Results measure generalisation to held-out sites in this dataset, not all mines.",
+    "The fixed 50:50 ensemble weight was not optimized."
+  ]
+}

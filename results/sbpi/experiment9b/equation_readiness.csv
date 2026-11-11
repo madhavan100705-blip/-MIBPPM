@@ -1,0 +1,24 @@
+Equation,Required_parameter,Status
+P80 - Kuznetsov,Burden (m),AVAILABLE_IN_EXCEL
+P80 - Kuznetsov,Spacing (m),AVAILABLE_IN_EXCEL
+P80 - Kuznetsov,Bench height (m),NOT_AVAILABLE_IN_EXCEL
+P80 - Kuznetsov,Charge mass (kg),NOT_AVAILABLE_IN_EXCEL
+P80 - Kuznetsov,Rock factor,NOT_AVAILABLE_IN_EXCEL
+P80 - Kuznetsov,Explosive RWS,NOT_AVAILABLE_IN_EXCEL
+P80 - Rosin-Rammler,X50 (m),NOT_AVAILABLE_IN_EXCEL
+P80 - Rosin-Rammler,Uniformity index,NOT_AVAILABLE_IN_EXCEL
+PPV - USBM,Maximum charge per delay (kg),NOT_AVAILABLE_IN_EXCEL
+PPV - USBM,Monitoring distance (m),NOT_AVAILABLE_IN_EXCEL
+PPV - USBM,Site constant K,NOT_AVAILABLE_IN_EXCEL
+PPV - USBM,Site exponent beta,NOT_AVAILABLE_IN_EXCEL
+Flyrock - Ghasemi,Powder Factor (kg/m³),AVAILABLE_IN_EXCEL
+Flyrock - Ghasemi,Stemming (m),NOT_AVAILABLE_IN_EXCEL
+Flyrock - Ghasemi,Burden (m),AVAILABLE_IN_EXCEL
+Flyrock - Ghasemi,Original equation parameters,NOT_AVAILABLE_IN_EXCEL
+Crusher Productivity,Crusher capacity,NOT_AVAILABLE_IN_EXCEL
+Crusher Productivity,Feed size,NOT_AVAILABLE_IN_EXCEL
+Crusher Productivity,Operating hours,NOT_AVAILABLE_IN_EXCEL
+Crusher Productivity,Equipment availability,NOT_AVAILABLE_IN_EXCEL
+SBPI,Original SBPI equation,NOT_AVAILABLE_IN_EXCEL
+SBPI,Indicator weights,NOT_AVAILABLE_IN_EXCEL
+SBPI,Normalization method,NOT_AVAILABLE_IN_EXCEL

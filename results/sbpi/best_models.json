@@ -1,0 +1,27 @@
+{
+    "P80 (mm)": {
+        "best_model": "Linear Regression",
+        "grouped_cv_MAE": 2.524375958259423,
+        "saved_file": "results\\sbpi\\saved_models\\p80_mm_best_model.joblib"
+    },
+    "PPV (mm/s)": {
+        "best_model": "Linear Regression",
+        "grouped_cv_MAE": 0.07200762954587164,
+        "saved_file": "results\\sbpi\\saved_models\\ppv_mm_s_best_model.joblib"
+    },
+    "Flyrock (m)": {
+        "best_model": "Linear Regression",
+        "grouped_cv_MAE": 1.3899400001022864,
+        "saved_file": "results\\sbpi\\saved_models\\flyrock_m_best_model.joblib"
+    },
+    "Crusher Productivity (t/h)": {
+        "best_model": "Linear Regression",
+        "grouped_cv_MAE": 1.9850219600658268,
+        "saved_file": "results\\sbpi\\saved_models\\crusher_productivity_t_h_best_model.joblib"
+    },
+    "SBPI": {
+        "best_model": "Linear Regression",
+        "grouped_cv_MAE": 0.007741491792086646,
+        "saved_file": "results\\sbpi\\saved_models\\sbpi_best_model.joblib"
+    }
+}

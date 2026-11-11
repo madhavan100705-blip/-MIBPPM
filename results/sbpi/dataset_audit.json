@@ -1,0 +1,23 @@
+{
+    "source_file": "C:\\Users\\madhavan.s\\Downloads\\SBPI.xlsx",
+    "sheet": "Production Blast Dataset ",
+    "usable_rows": 45,
+    "dropped_rows": 0,
+    "distinct_blast_ids": 15,
+    "features": [
+        "UCS (MPa)",
+        "RQD (%)",
+        "Burden (m)",
+        "Spacing (m)",
+        "Powder Factor (kg/m\u00b3)"
+    ],
+    "targets": [
+        "P80 (mm)",
+        "PPV (mm/s)",
+        "Flyrock (m)",
+        "Crusher Productivity (t/h)",
+        "SBPI"
+    ],
+    "validation": "5-fold GroupKFold by Blast ID",
+    "warning": "Small dataset. Metrics are exploratory and do not prove performance at new mines."
+}
