@@ -8,6 +8,8 @@ import pandas as pd
 import streamlit as st
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
+from sklearn.linear_model import LinearRegression
+from backend.app.engine.fragmentation import kuznesov_mean_fragment_size_cm
 
 # -----------------------------------------------------------------------------
 # MIBPPM | SBPI research dashboard — clean editorial / technical visual system
@@ -18,6 +20,7 @@ st.set_page_config(page_title="MIBPPM | Research Dashboard", page_icon="⛏", la
 ROOT = Path(__file__).resolve().parents[1]
 RESULTS = ROOT / "results" / "sbpi"
 MODEL_DIR = RESULTS / "saved_models"
+FRAGMENTATION_DATA = ROOT / "data" / "raw" / "caos_surface_confirmed.csv"
 
 FEATURES = ["UCS (MPa)", "RQD (%)", "Burden (m)", "Spacing (m)", "Powder Factor (kg/m³)"]
 TARGETS = ["P80 (mm)", "PPV (mm/s)", "Flyrock (m)", "Crusher Productivity (t/h)", "SBPI"]
@@ -29,6 +32,23 @@ MODEL_FILES = {
     "SBPI": "sbpi_best_model.joblib",
 }
 UNITS = {"P80 (mm)": "mm", "PPV (mm/s)": "mm/s", "Flyrock (m)": "m", "Crusher Productivity (t/h)": "t/h", "SBPI": "index"}
+FRAG_FEATURES = ["S_over_B", "H_over_B", "B_over_D", "T_over_B", "Pf_kg_m3", "XB_m", "E_GPa"]
+FRAG_LABELS = {
+    "S_over_B": "Spacing / burden",
+    "H_over_B": "Bench height / burden",
+    "B_over_D": "Burden / hole diameter",
+    "T_over_B": "Stemming / burden",
+    "Pf_kg_m3": "Powder factor (kg/m³)",
+    "XB_m": "In-situ block size (m)",
+    "E_GPa": "Young's modulus (GPa)",
+}
+FORMULA_LIMITATIONS = {
+    "P80 (mm)": "Bench height, charge mass, rock factor, RWS, and a validated size-distribution method are required",
+    "PPV (mm/s)": "Charge per delay, monitoring distance, and site-calibrated K and beta are required",
+    "Flyrock (m)": "A selected, site-calibrated equation and its stemming and charge inputs are required",
+    "Crusher Productivity (t/h)": "Crusher capacity and operating-condition inputs are required",
+    "SBPI": "The original index equation, weights, and normalization are required",
+}
 DEFAULTS = {"UCS (MPa)": 80.0, "RQD (%)": 55.0, "Burden (m)": 3.3, "Spacing (m)": 4.0, "Powder Factor (kg/m³)": 0.78}
 
 # Neutral graphite + restrained teal, with one warm accent for measured data.
@@ -135,6 +155,27 @@ def load_models():
     return out
 
 
+@st.cache_resource(show_spinner=False)
+def load_fragmentation_model():
+    if not FRAGMENTATION_DATA.exists():
+        raise FileNotFoundError(f"Fragmentation training data not found: {FRAGMENTATION_DATA}")
+    frame = pd.read_csv(FRAGMENTATION_DATA).dropna(subset=FRAG_FEATURES + ["x50_m"])
+    if len(frame) < 2:
+        raise ValueError("At least two measured X50 records are required to fit the comparison model.")
+    estimator = LinearRegression().fit(frame[FRAG_FEATURES], frame["x50_m"])
+    ranges = {feature: (float(frame[feature].min()), float(frame[feature].max())) for feature in FRAG_FEATURES}
+    return estimator, ranges, len(frame)
+
+
+def kuznesov_x50_m(rock_factor, burden_m, spacing_m, bench_height_m, powder_factor, rws):
+    """Kuznetsov-style X50, converted from the engine's centimetre result to metres."""
+    if min(rock_factor, burden_m, spacing_m, bench_height_m, powder_factor, rws) <= 0:
+        raise ValueError("Rock factor, geometry, powder factor, and RWS must all be positive.")
+    rock_volume = burden_m * spacing_m * bench_height_m
+    charge_mass = powder_factor * rock_volume
+    return kuznesov_mean_fragment_size_cm(rock_factor, rock_volume, charge_mass, rws) / 100.0
+
+
 def numeric(s):
     return pd.to_numeric(s, errors="coerce").dropna()
 
@@ -162,6 +203,7 @@ def render_fig(fig):
 try:
     data = load_data()
     models = load_models()
+    frag_model, frag_ranges, frag_training_count = load_fragmentation_model()
 except Exception as exc:
     st.error(f"Dashboard data/model loading failed: {exc}")
     st.info("Confirm that this file is inside the project's dashboard folder and that results/sbpi contains the dataset and saved_models folder.")
@@ -177,7 +219,7 @@ st.markdown(f"""
 <div class="hero">
   <div class="eyebrow">MIBPPM / BENCH BLAST PERFORMANCE</div>
   <h1>Research analysis console</h1>
-  <div class="hero-sub">Blast-condition inputs, model estimates, parameter response curves and grouped validation diagnostics.</div>
+  <div class="hero-sub">Compare the Kuznetsov equation with an AI fragmentation estimate, inspect parameter responses, and export calculation results.</div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -187,7 +229,7 @@ for col, label, val in zip(rcols, ["DATA RECORDS", "BLAST GROUPS", "MODEL INPUTS
     col.markdown(f'<div class="output-card"><div class="kicker">{label}</div><div class="output-value">{val}</div></div>', unsafe_allow_html=True)
 
 st.markdown('<div class="rule"></div>', unsafe_allow_html=True)
-tab_predict, tab_sensitivity, tab_validation, tab_data = st.tabs(["PREDICTION", "PARAMETER RESPONSE", "MODEL VALIDATION", "DATA PROFILE"])
+tab_predict, tab_formula, tab_sensitivity, tab_validation, tab_data = st.tabs(["PREDICTION", "FORMULA vs AI · X50", "PARAMETER RESPONSE", "MODEL VALIDATION", "DATA PROFILE"])
 
 # ---- Prediction ----
 with tab_predict:
@@ -215,6 +257,7 @@ with tab_predict:
             estimates = {t: float(np.asarray(models[t].predict(x)).reshape(-1)[0]) for t in TARGETS}
             st.session_state["sbpi_v2_estimates"] = estimates
             st.session_state["sbpi_v2_inputs"] = inputs
+            st.session_state["sbpi_v2_run_id"] = pd.Timestamp.now().isoformat(timespec="seconds")
         estimates = st.session_state.get("sbpi_v2_estimates")
         if estimates:
             cards = st.columns(2)
@@ -222,8 +265,22 @@ with tab_predict:
                 with cards[i % 2]:
                     st.markdown(f'<div class="output-card"><div class="output-name">{target}</div><div class="output-value">{estimates[target]:,.4f}</div><div class="output-unit">{UNITS[target]} · AI model estimate</div></div>', unsafe_allow_html=True)
                     st.write("")
-            csv = pd.DataFrame([{"Output": t, "AI prediction": estimates[t], "Unit": UNITS[t]} for t in TARGETS]).to_csv(index=False).encode("utf-8")
-            st.download_button("EXPORT PREDICTIONS · CSV", csv, "mibppm_sbpi_predictions.csv", "text/csv")
+            run_inputs = st.session_state.get("sbpi_v2_inputs", inputs)
+            report_rows = []
+            for target in TARGETS:
+                report_rows.append({
+                    "Run timestamp": st.session_state.get("sbpi_v2_run_id", ""),
+                    **run_inputs,
+                    "Output": target,
+                    "AI model prediction": estimates[target],
+                    "Unit": UNITS[target],
+                    "Formula result": "",
+                    "Formula status": FORMULA_LIMITATIONS[target],
+                    "Model": "Saved target-specific Linear Regression pipeline",
+                })
+            csv = pd.DataFrame(report_rows).to_csv(index=False).encode("utf-8-sig")
+            st.download_button("DOWNLOAD FULL CALCULATION · CSV", csv, "mibppm_calculation_report.csv", "text/csv")
+            st.caption("The report includes every input, all five model estimates, units, and an explicit formula availability field.")
         else:
             st.markdown('<div class="output-card"><div class="kicker">MODEL OUTPUTS</div><div class="output-value">—</div><p class="small-note">Run prediction to populate the five output estimates.</p></div>', unsafe_allow_html=True)
 
@@ -231,13 +288,188 @@ with tab_predict:
     st.markdown("### Equation-based outputs")
     st.caption("The existing SBPI input table does not contain the full input set and calibration constants needed to calculate these independently. Unavailable equation values are intentionally left blank rather than estimated or invented.")
     math_status = pd.DataFrame([
-        ["P80 (mm)", "Not configured", "Bench height, charge mass, rock factor, RWS and uniformity inputs required"],
-        ["PPV (mm/s)", "Not configured", "Charge per delay, monitoring distance and site constants K, β required"],
-        ["Flyrock (m)", "Not configured", "Stemming, charge and selected site-calibrated equation required"],
-        ["Crusher Productivity (t/h)", "Not configured", "Crusher capacity and operating-condition inputs required"],
-        ["SBPI", "Not configured", "Original index equation, weights and normalization required"],
+        [target, "Not configured", FORMULA_LIMITATIONS[target]] for target in TARGETS
     ], columns=["Output", "Equation result", "Missing equation inputs"])
     st.dataframe(math_status, use_container_width=True, hide_index=True)
+
+# ---- Shared-output mathematical and AI comparison ----
+with tab_formula:
+    st.markdown("### Kuznetsov equation vs AI estimate")
+    st.markdown(
+        '<p class="small-note">Compare two estimates of the same output: median fragment size X50 (m). '
+        'The AI model uses the repository’s measured X50 dataset; the equation uses your stated rock factor and blast inputs.</p>',
+        unsafe_allow_html=True,
+    )
+    with st.expander("Calculation inputs", expanded=True):
+        a, b, c = st.columns(3)
+        with a:
+            frag_burden = st.number_input("Burden (m)", min_value=0.1, value=3.0, step=0.1, key="frag_burden")
+            frag_spacing = st.number_input("Spacing (m)", min_value=0.1, value=3.6, step=0.1, key="frag_spacing")
+            frag_bench = st.number_input("Bench height (m)", min_value=0.5, value=12.0, step=0.5, key="frag_bench")
+            frag_stemming = st.number_input("Stemming length (m)", min_value=0.0, value=2.4, step=0.1, key="frag_stemming")
+        with b:
+            frag_hole_diameter = st.number_input("Hole diameter (mm)", min_value=25.0, value=100.0, step=5.0, key="frag_hole_diameter")
+            frag_powder_factor = st.number_input("Powder factor (kg/m³)", min_value=0.01, value=0.8, step=0.05, key="frag_powder_factor")
+            frag_block_size = st.number_input("In-situ block size XB (m)", min_value=0.001, value=0.5, step=0.01, key="frag_block_size")
+            frag_modulus = st.number_input("Young’s modulus (GPa)", min_value=0.1, value=30.0, step=1.0, key="frag_modulus")
+        with c:
+            frag_rock_factor = st.number_input(
+                "Documented rock factor A", min_value=0.0, max_value=30.0, value=0.0, step=0.1,
+                help="Enter a factor justified for your rock mass. Zero leaves the equation comparison disabled.",
+                key="frag_rock_factor",
+            )
+            frag_rws = st.number_input("Relative weight strength (RWS)", min_value=1.0, value=100.0, step=1.0, key="frag_rws")
+            actual_x50 = st.number_input("Measured X50 (m), optional", min_value=0.0, value=0.0, step=0.01, key="frag_actual_x50")
+            st.caption(f"AI training records: {frag_training_count} measured X50 rows")
+        st.caption("RWS starts at 100 as an ANFO example; verify the explosive strength before calculating. The equation assumes one burden × spacing × bench-height volume per hole and uses charge mass = powder factor × volume.")
+
+    if frag_rock_factor <= 0:
+        st.info("Enter a positive, independently justified rock factor to calculate the equation estimate.")
+    current_signature = (
+        frag_rock_factor, frag_rws, frag_burden, frag_spacing, frag_bench,
+        frag_stemming, frag_hole_diameter, frag_powder_factor, frag_block_size,
+        frag_modulus, actual_x50,
+    )
+    run_fragmentation = st.button("CALCULATE X50 · FORMULA + AI", type="primary", key="run_x50_comparison")
+    if run_fragmentation:
+        try:
+            if frag_stemming >= frag_bench:
+                raise ValueError("Stemming must be shorter than bench height.")
+            if frag_hole_diameter <= 0:
+                raise ValueError("Hole diameter must be positive.")
+            if frag_rock_factor <= 0:
+                raise ValueError("Enter a positive, independently justified rock factor.")
+            x50_math = kuznesov_x50_m(
+                frag_rock_factor, frag_burden, frag_spacing, frag_bench,
+                frag_powder_factor, frag_rws,
+            )
+            frag_features = {
+                "S_over_B": frag_spacing / frag_burden,
+                "H_over_B": frag_bench / frag_burden,
+                "B_over_D": frag_burden / (frag_hole_diameter / 1000.0),
+                "T_over_B": frag_stemming / frag_burden,
+                "Pf_kg_m3": frag_powder_factor,
+                "XB_m": frag_block_size,
+                "E_GPa": frag_modulus,
+            }
+            frag_input = pd.DataFrame([frag_features], columns=FRAG_FEATURES)
+            x50_ai = float(np.asarray(frag_model.predict(frag_input)).reshape(-1)[0])
+            out_of_range_frag = [
+                f"{FRAG_LABELS[k]} ({v:.3g})" for k, v in frag_features.items()
+                if v < frag_ranges[k][0] or v > frag_ranges[k][1]
+            ]
+            st.session_state["x50_comparison"] = {
+                "math": x50_math,
+                "ai": x50_ai,
+                "features": frag_features,
+                "inputs": {
+                    "Rock factor A": frag_rock_factor,
+                    "Burden (m)": frag_burden,
+                    "Spacing (m)": frag_spacing,
+                    "Bench height (m)": frag_bench,
+                    "Stemming (m)": frag_stemming,
+                    "Hole diameter (mm)": frag_hole_diameter,
+                    "Powder factor (kg/m³)": frag_powder_factor,
+                    "RWS": frag_rws,
+                    "In-situ block size (m)": frag_block_size,
+                    "Young’s modulus (GPa)": frag_modulus,
+                    "Measured X50 (m)": actual_x50 if actual_x50 > 0 else np.nan,
+                },
+                "out_of_range": out_of_range_frag,
+                "signature": current_signature,
+            }
+        except Exception as exc:
+            st.error(f"X50 calculation could not be completed: {exc}")
+
+    comparison = st.session_state.get("x50_comparison")
+    if comparison and comparison["signature"] != current_signature:
+        comparison = None
+    if comparison:
+        if comparison["out_of_range"]:
+            st.warning("Outside observed AI training range: " + ", ".join(comparison["out_of_range"]) + ". Treat the AI estimate as an extrapolation.")
+        m1, m2, m3 = st.columns(3)
+        m1.metric("Kuznetsov-style equation · X50", f"{comparison['math']:.4f} m")
+        m2.metric("AI estimate · X50", f"{comparison['ai']:.4f} m")
+        m3.metric("AI − equation", f"{comparison['ai'] - comparison['math']:+.4f} m")
+        st.caption("Equation form: X50 = A × (V/Q)^0.8 × Q^(1/6) × (115/RWS)^(19/30). V = burden × spacing × bench height; Q = powder factor × V. The code returns cm, converted here to m.")
+        st.caption("The AI is a Linear Regression fitted to all measured X50 records in the included research dataset. It is a research estimate, not an independently validated site prediction.")
+
+        sensitivity_rows = []
+        base_features = comparison["features"]
+        base_inputs = comparison["inputs"]
+        for feature in FRAG_FEATURES:
+            low, high = frag_ranges[feature]
+            xgrid = np.linspace(low, high, 60)
+            rows = []
+            for xv in xgrid:
+                row = dict(base_features)
+                row[feature] = float(xv)
+                rows.append(row)
+            ai_curve = np.asarray(frag_model.predict(pd.DataFrame(rows, columns=FRAG_FEATURES)), dtype=float).reshape(-1)
+            for xv, ai_value in zip(xgrid, ai_curve):
+                burden = base_inputs["Burden (m)"]
+                spacing = base_inputs["Spacing (m)"]
+                bench = base_inputs["Bench height (m)"]
+                pf = base_inputs["Powder factor (kg/m³)"]
+                if feature == "S_over_B":
+                    spacing = float(xv) * burden
+                elif feature == "H_over_B":
+                    bench = float(xv) * burden
+                elif feature == "Pf_kg_m3":
+                    pf = float(xv)
+                formula_value = kuznesov_x50_m(
+                    base_inputs["Rock factor A"], burden, spacing, bench, pf, base_inputs["RWS"]
+                )
+                sensitivity_rows.append({
+                    "Varied parameter": FRAG_LABELS[feature],
+                    "Parameter value": float(xv),
+                    "Parameter within AI training range": True,
+                    "Kuznetsov equation X50 (m)": formula_value,
+                    "AI X50 (m)": float(ai_value),
+                })
+
+        st.markdown("### Formula and AI response by parameter")
+        st.caption("Each graph varies one AI model parameter at a time across its observed training range. The other AI inputs stay at your entered settings. The equation line changes only where the Kuznetsov equation uses that parameter; it stays flat for factors absent from the equation.")
+        for start in range(0, len(FRAG_FEATURES), 2):
+            graph_cols = st.columns(2, gap="large")
+            for col, feature in zip(graph_cols, FRAG_FEATURES[start:start + 2]):
+                with col:
+                    rows = [r for r in sensitivity_rows if r["Varied parameter"] == FRAG_LABELS[feature]]
+                    graph = pd.DataFrame(rows)
+                    fig, ax = plt.subplots(figsize=(7.2, 4.0), dpi=135)
+                    ax.plot(graph["Parameter value"], graph["Kuznetsov equation X50 (m)"], color=AMBER, linewidth=2.5, label="Kuznetsov equation")
+                    ax.plot(graph["Parameter value"], graph["AI X50 (m)"], color=TEAL, linewidth=2.5, label="AI model")
+                    style_axis(ax, f"X50 response · {FRAG_LABELS[feature]}", FRAG_LABELS[feature], "X50 (m)")
+                    ax.legend(frameon=False, fontsize=8, loc="best")
+                    render_fig(fig)
+
+        report_row = {
+            **comparison["inputs"],
+            **{f"AI input · {FRAG_LABELS[k]}": v for k, v in comparison["features"].items()},
+            "Kuznetsov equation X50 (m)": comparison["math"],
+            "AI X50 (m)": comparison["ai"],
+            "AI minus equation (m)": comparison["ai"] - comparison["math"],
+            "AI training rows": frag_training_count,
+            "AI training range warning": "; ".join(comparison["out_of_range"]),
+        }
+        if np.isfinite(comparison["inputs"]["Measured X50 (m)"]):
+            measured = comparison["inputs"]["Measured X50 (m)"]
+            report_row["Equation absolute error (m)"] = abs(comparison["math"] - measured)
+            report_row["AI absolute error (m)"] = abs(comparison["ai"] - measured)
+        st.download_button(
+            "DOWNLOAD X50 CALCULATION REPORT · CSV",
+            pd.DataFrame([report_row]).to_csv(index=False).encode("utf-8-sig"),
+            "mibppm_x50_formula_vs_ai_report.csv",
+            "text/csv",
+            key="download_x50_report",
+        )
+        st.download_button(
+            "DOWNLOAD FORMULA + AI CURVES · CSV",
+            pd.DataFrame(sensitivity_rows).to_csv(index=False).encode("utf-8-sig"),
+            "mibppm_x50_formula_vs_ai_parameter_curves.csv",
+            "text/csv",
+            key="download_x50_curves",
+        )
 
 # ---- Sensitivity: every input parameter for one selected output ----
 with tab_sensitivity:
@@ -322,6 +554,41 @@ with tab_sensitivity:
                 )
                 ax.legend(frameon=False, fontsize=8, loc="best")
                 render_fig(fig)
+
+    # Export the plotted response data so the analysis can be reused outside the dashboard.
+    curve_rows = []
+    for feature in FEATURES:
+        observed = numeric(data[feature])
+        dmin, dmax = float(observed.min()), float(observed.max())
+        pad = max((dmax - dmin) * 0.08, 0.01)
+        xgrid = np.linspace(dmin - pad, dmax + pad, 60)
+        rows = []
+        for xv in xgrid:
+            row = dict(base)
+            row[feature] = float(xv)
+            rows.append(row)
+        curve_frame = pd.DataFrame(rows, columns=FEATURES)
+        predictions = np.asarray(models[selected_target].predict(curve_frame), dtype=float).reshape(-1)
+        for xv, prediction in zip(xgrid, predictions):
+            curve_rows.append({
+                "Output": selected_target,
+                "Output unit": UNITS[selected_target],
+                "Varied parameter": feature,
+                "Parameter value": float(xv),
+                "Model estimate": float(prediction),
+                "Reference setting": base[feature],
+                "Within observed range": bool(dmin <= xv <= dmax),
+                **{f"Held input · {name}": value for name, value in base.items() if name != feature},
+            })
+    curve_csv = pd.DataFrame(curve_rows).to_csv(index=False).encode("utf-8-sig")
+    st.download_button(
+        "DOWNLOAD ALL FIVE PARAMETER RESPONSE CURVES · CSV",
+        curve_csv,
+        f"mibppm_{selected_target.lower().replace(' ', '_').replace('/', '_')}_response_curves.csv",
+        "text/csv",
+        key="download_response_curves",
+    )
+    st.caption("Curve data covers each of the five inputs at 60 points, holding the other four at the reference settings. These are model responses, not equation outputs.")
 
     st.markdown('<div class="rule"></div>', unsafe_allow_html=True)
     st.markdown("**Interpretation**")
@@ -412,3 +679,4 @@ with tab_data:
         render_fig(fig)
 
 st.markdown('<div style="border-top:1px solid #DCE4E1;margin-top:25px;padding-top:13px;color:#7B898C;font-size:.74rem;">MIBPPM · SBPI research dashboard · Model estimates are not operational blast-design instructions.</div>', unsafe_allow_html=True)
+
