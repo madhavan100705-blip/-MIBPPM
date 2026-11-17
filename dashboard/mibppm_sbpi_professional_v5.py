@@ -399,7 +399,28 @@ with tab_formula:
         m1.metric("Kuznetsov-style equation · X50", f"{comparison['math']:.4f} m")
         m2.metric("AI estimate · X50", f"{comparison['ai']:.4f} m")
         m3.metric("AI − equation", f"{comparison['ai'] - comparison['math']:+.4f} m")
-        st.caption("The first comparison uses example factor A = 8.0 and RWS = 100 (ANFO). Replace these with site-verified values before interpreting results.")
+
+        # A prominent, direct comparison of the two methods for the current blast.
+        method_frame = pd.DataFrame({
+            "Method": ["Kuznetsov equation", "AI model"],
+            "X50 (m)": [comparison["math"], comparison["ai"]],
+        })
+        method_chart = px.bar(
+            method_frame, x="X50 (m)", y="Method", color="Method", text="X50 (m)",
+            color_discrete_map={"Kuznetsov equation": AMBER, "AI model": TEAL},
+            orientation="h",
+        )
+        method_chart.update_traces(texttemplate="%{text:.4f} m", textposition="outside", cliponaxis=False)
+        method_chart.update_layout(
+            title={"text": "Current scenario · formula vs AI", "x": 0.02, "xanchor": "left"},
+            template="plotly_white", height=250, margin=dict(l=8, r=90, t=55, b=20),
+            showlegend=False, font=dict(family="DM Sans, sans-serif", color=INK, size=13),
+            paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="#FFFFFF",
+        )
+        method_chart.update_xaxes(title_text="Median fragment size X50 (m)", showgrid=True, gridcolor=GRID, rangemode="tozero")
+        method_chart.update_yaxes(title_text="", showgrid=False, categoryorder="array", categoryarray=["AI model", "Kuznetsov equation"])
+        st.plotly_chart(method_chart, use_container_width=True, key="x50_current_method_comparison")
+        st.caption("Example factor A = 8.0 and RWS = 100 (ANFO). Replace these with site-verified values before interpreting results.")
         st.caption("Equation form: X50 = A × (V/Q)^0.8 × Q^(1/6) × (115/RWS)^(19/30). V = burden × spacing × bench height; Q = powder factor × V. The code returns cm, converted here to m.")
         st.caption("The AI is a Linear Regression fitted to all measured X50 records in the included research dataset. It is a research estimate, not an independently validated site prediction.")
 
