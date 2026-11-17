@@ -1,5 +1,6 @@
 from pathlib import Path
 import json
+import io
 import sys
 import warnings
 
@@ -7,6 +8,7 @@ import joblib
 import numpy as np
 import pandas as pd
 import streamlit as st
+import xlsxwriter
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 import plotly.express as px
@@ -166,6 +168,86 @@ def kuznesov_x50_m(rock_factor, burden_m, spacing_m, bench_height_m, powder_fact
     charge_mass = powder_factor * rock_volume
     return kuznesov_mean_fragment_size_cm(rock_factor, rock_volume, charge_mass, rws) / 100.0
 
+
+
+def build_response_workbook(target, base_inputs, prediction, curve_rows):
+    """Create an Excel report with the selected output and five native Excel charts."""
+    output = io.BytesIO()
+    workbook = xlsxwriter.Workbook(output, {"in_memory": True})
+    title_fmt = workbook.add_format({"bold": True, "font_size": 20, "font_color": "#FFFFFF", "bg_color": "#153D52", "valign": "vcenter"})
+    subtitle_fmt = workbook.add_format({"font_size": 10, "font_color": "#526B78", "text_wrap": True})
+    section_fmt = workbook.add_format({"bold": True, "font_size": 12, "font_color": "#153D52", "bottom": 1, "bottom_color": "#D6E1E6"})
+    header_fmt = workbook.add_format({"bold": True, "font_color": "#FFFFFF", "bg_color": "#087E83", "text_wrap": True, "valign": "vcenter"})
+    value_fmt = workbook.add_format({"font_color": "#193342", "num_format": "0.0000"})
+    note_fmt = workbook.add_format({"font_color": "#64747D", "italic": True, "text_wrap": True})
+
+    results = workbook.add_worksheet("Results")
+    results.set_column("A:A", 34)
+    results.set_column("B:B", 22)
+    results.merge_range("A1:B1", "MIBPPM · Blast calculation report", title_fmt)
+    results.set_row(0, 34)
+    results.merge_range("A2:B2", "Saved model response for the selected blast inputs. Graphs and plotted values are included in this workbook.", subtitle_fmt)
+    results.write("A4", "Selected result", section_fmt)
+    results.write("A5", target)
+    results.write_number("B5", float(prediction), value_fmt)
+    results.write("A6", "Unit")
+    results.write("B6", UNITS[target])
+    results.write("A8", "Reference input settings", section_fmt)
+    results.write_row("A9", ["Input", "Value"], header_fmt)
+    for row_num, (name, value) in enumerate(base_inputs.items(), start=9):
+        results.write(row_num, 0, name)
+        results.write_number(row_num, 1, float(value), value_fmt)
+    note_row = 10 + len(base_inputs)
+    results.merge_range(note_row, 0, note_row + 1, 1, "The response curves vary one input at a time and hold the other inputs at the reference settings. The saved model is linear, so straight response lines are expected.", note_fmt)
+    results.freeze_panes(4, 0)
+
+    curve_sheet = workbook.add_worksheet("Curve data")
+    columns = list(curve_rows[0].keys()) if curve_rows else []
+    curve_sheet.write_row(0, 0, columns, header_fmt)
+    for row_num, row in enumerate(curve_rows, start=1):
+        for col_num, name in enumerate(columns):
+            value = row.get(name)
+            if isinstance(value, (int, float, np.integer, np.floating)) and not isinstance(value, bool):
+                curve_sheet.write_number(row_num, col_num, float(value))
+            elif isinstance(value, bool):
+                curve_sheet.write_boolean(row_num, col_num, value)
+            elif value is not None:
+                curve_sheet.write(row_num, col_num, str(value))
+    curve_sheet.freeze_panes(1, 0)
+    curve_sheet.autofilter(0, 0, len(curve_rows), max(len(columns) - 1, 0))
+    curve_sheet.set_column(0, max(len(columns) - 1, 0), 22)
+    curve_sheet.set_column(2, 2, 27)
+    index = {name: i for i, name in enumerate(columns)}
+
+    charts = workbook.add_worksheet("Graphs")
+    charts.hide_gridlines(2)
+    charts.set_column("A:P", 12)
+    charts.merge_range("A1:P1", f"{target} · parameter response graphs", title_fmt)
+    charts.set_row(0, 34)
+    for feature_num, feature in enumerate(FEATURES):
+        start_row = 1 + feature_num * 60
+        end_row = start_row + 59
+        chart = workbook.add_chart({"type": "scatter", "subtype": "straight"})
+        chart.add_series({
+            "name": f"{target} model response",
+            "categories": ["Curve data", start_row, index["Parameter value"], end_row, index["Parameter value"]],
+            "values": ["Curve data", start_row, index["Model estimate"], end_row, index["Model estimate"]],
+            "line": {"color": "#087E83", "width": 2.5},
+            "marker": {"type": "none"},
+        })
+        chart.set_title({"name": f"{target} by {feature}", "name_font": {"name": "Aptos Display", "size": 12, "bold": True, "color": "#193342"}})
+        chart.set_x_axis({"name": feature, "name_font": {"color": "#526B78"}, "num_font": {"color": "#526B78"}, "major_gridlines": {"visible": False}})
+        chart.set_y_axis({"name": f"Predicted {target} ({UNITS[target]})", "name_font": {"color": "#526B78"}, "num_font": {"color": "#526B78"}, "major_gridlines": {"visible": True, "line": {"color": "#E5ECEF"}}})
+        chart.set_legend({"none": True})
+        chart.set_chartarea({"border": {"none": True}, "fill": {"color": "#FFFFFF"}})
+        chart.set_plotarea({"border": {"color": "#E2E9EC"}, "fill": {"color": "#FFFFFF"}})
+        chart.set_size({"width": 650, "height": 340})
+        row = 2 + (feature_num // 2) * 21
+        col = 0 if feature_num % 2 == 0 else 8
+        charts.insert_chart(row, col, chart)
+    workbook.close()
+    output.seek(0)
+    return output.getvalue()
 
 def numeric(s):
     return pd.to_numeric(s, errors="coerce").dropna()
@@ -523,63 +605,6 @@ with tab_sensitivity:
         "it is not evidence of a nonlinear physical relationship."
     )
 
-    for row_start in range(0, len(FEATURES), 2):
-        chart_cols = st.columns(2, gap="large")
-        for col, feature in zip(chart_cols, FEATURES[row_start:row_start + 2]):
-            with col:
-                observed = numeric(data[feature])
-                dmin, dmax = float(observed.min()), float(observed.max())
-                pad = max((dmax - dmin) * 0.08, 0.01)
-                lo, hi = dmin - pad, dmax + pad
-                xgrid = np.linspace(lo, hi, 60)
-
-                rows = []
-                for xv in xgrid:
-                    row = dict(base)
-                    row[feature] = float(xv)
-                    rows.append(row)
-                curve_frame = pd.DataFrame(rows, columns=FEATURES)
-                yp = np.asarray(
-                    models[selected_target].predict(curve_frame),
-                    dtype=float
-                ).reshape(-1)
-
-                fig, ax = plt.subplots(figsize=(7.2, 4.0), dpi=135)
-                ax.axvspan(
-                    dmin, dmax, color=TEAL, alpha=0.09,
-                    label="Observed data range", zorder=0
-                )
-                ax.plot(
-                    xgrid, yp, color=TEAL, linewidth=2.8,
-                    label="Model response", zorder=3
-                )
-
-                current_x = base[feature]
-                if lo <= current_x <= hi:
-                    current_row = pd.DataFrame([base], columns=FEATURES)
-                    current_y = float(
-                        models[selected_target].predict(current_row)[0]
-                    )
-                    ax.scatter(
-                        [current_x], [current_y], s=72, color=AMBER,
-                        edgecolor="white", linewidth=1.3,
-                        label="Reference setting", zorder=5
-                    )
-                    ax.axvline(
-                        current_x, color=AMBER, alpha=0.45,
-                        linestyle=":", linewidth=1.2
-                    )
-
-                style_axis(
-                    ax,
-                    f"{selected_target} vs {feature}",
-                    feature,
-                    f"Predicted {selected_target} ({UNITS[selected_target]})"
-                )
-                ax.legend(frameon=False, fontsize=8, loc="best")
-                render_fig(fig)
-
-    # Export the plotted response data so the analysis can be reused outside the dashboard.
     curve_rows = []
     for feature in FEATURES:
         observed = numeric(data[feature])
@@ -593,17 +618,47 @@ with tab_sensitivity:
             rows.append(row)
         curve_frame = pd.DataFrame(rows, columns=FEATURES)
         predictions = np.asarray(models[selected_target].predict(curve_frame), dtype=float).reshape(-1)
-        for xv, prediction in zip(xgrid, predictions):
+        for xv, prediction_value in zip(xgrid, predictions):
             curve_rows.append({
                 "Output": selected_target,
                 "Output unit": UNITS[selected_target],
                 "Varied parameter": feature,
                 "Parameter value": float(xv),
-                "Model estimate": float(prediction),
+                "Model estimate": float(prediction_value),
                 "Reference setting": base[feature],
                 "Within observed range": bool(dmin <= xv <= dmax),
                 **{f"Held input · {name}": value for name, value in base.items() if name != feature},
             })
+
+    st.markdown("### Parameter response")
+    st.caption("Choose one input at a time for a larger, easier-to-read model response graph. The shaded band shows the observed research-data range; the gold marker shows the reference setting.")
+    selected_parameter = st.selectbox("Parameter to plot", FEATURES, key="sbpi_v4_response_parameter")
+    selected_curve = pd.DataFrame(curve_rows)
+    selected_curve = selected_curve[selected_curve["Varied parameter"] == selected_parameter]
+    observed = numeric(data[selected_parameter])
+    dmin, dmax = float(observed.min()), float(observed.max())
+    current_x = base[selected_parameter]
+    current_y = float(np.asarray(models[selected_target].predict(pd.DataFrame([base], columns=FEATURES))).reshape(-1)[0])
+
+    response_chart = px.line(
+        selected_curve, x="Parameter value", y="Model estimate",
+        labels={"Parameter value": selected_parameter, "Model estimate": f"Predicted {selected_target} ({UNITS[selected_target]})"},
+    )
+    response_chart.update_traces(line=dict(color=TEAL, width=4), hovertemplate=f"{selected_parameter}: %{{x:.3f}}<br>Predicted {selected_target}: %{{y:.3f}} {UNITS[selected_target]}<extra></extra>")
+    response_chart.add_vrect(x0=dmin, x1=dmax, fillcolor=TEAL, opacity=0.08, line_width=0, layer="below", annotation_text="Observed data range", annotation_position="top left", annotation_font=dict(color=TEAL, size=11))
+    response_chart.add_vline(x=current_x, line_width=1.5, line_dash="dot", line_color=AMBER)
+    response_chart.add_scatter(x=[current_x], y=[current_y], mode="markers", name="Reference setting", marker=dict(color=AMBER, size=12, line=dict(color="#FFFFFF", width=2)), hovertemplate=f"Reference setting<br>{selected_parameter}: %{{x:.3f}}<br>Predicted {selected_target}: %{{y:.3f}} {UNITS[selected_target]}<extra></extra>")
+    response_chart.update_layout(
+        title={"text": f"{selected_target} response to {selected_parameter}", "x": 0.02, "xanchor": "left"},
+        template="plotly_white", height=500, margin=dict(l=25, r=28, t=72, b=45),
+        font=dict(family="DM Sans, sans-serif", color=INK, size=13),
+        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="#FFFFFF", hovermode="x unified",
+        legend=dict(orientation="h", y=1.08, x=0.02, title=None),
+    )
+    response_chart.update_xaxes(title_text=selected_parameter, showgrid=True, gridcolor=GRID, zeroline=False)
+    response_chart.update_yaxes(title_text=f"Predicted {selected_target} ({UNITS[selected_target]})", showgrid=True, gridcolor=GRID, zeroline=False)
+    st.plotly_chart(response_chart, use_container_width=True, key="sbpi_single_parameter_response")
+
     curve_csv = pd.DataFrame(curve_rows).to_csv(index=False).encode("utf-8-sig")
     st.download_button(
         "DOWNLOAD ALL FIVE PARAMETER RESPONSE CURVES · CSV",
@@ -611,6 +666,17 @@ with tab_sensitivity:
         f"mibppm_{selected_target.lower().replace(' ', '_').replace('/', '_')}_response_curves.csv",
         "text/csv",
         key="download_response_curves",
+    )
+    excel_bytes = build_response_workbook(
+        selected_target, base, current_y, curve_rows
+    )
+    excel_name = f"mibppm_{selected_target.lower().replace(' ', '_').replace('/', '_')}_calculation_and_graphs.xlsx"
+    st.download_button(
+        "DOWNLOAD RESULTS + GRAPHS · EXCEL",
+        excel_bytes,
+        excel_name,
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        key="download_response_excel",
     )
     st.caption("Curve data covers each of the five inputs at 60 points, holding the other four at the reference settings. These are model responses, not equation outputs.")
 
