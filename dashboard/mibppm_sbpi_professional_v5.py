@@ -22,7 +22,7 @@ from backend.app.engine.fragmentation import kuznesov_mean_fragment_size_cm
 # Uses existing local SBPI dataset, saved pipelines, grouped OOF predictions.
 # Does not modify training data, models, or experiment outputs.
 # -----------------------------------------------------------------------------
-st.set_page_config(page_title="MIBPPM | Research Dashboard", page_icon="⛏", layout="wide")
+st.set_page_config(page_title="MIBPPM | Formula + AI X50", page_icon="⛏", layout="wide")
 ROOT = PROJECT_ROOT
 RESULTS = ROOT / "results" / "sbpi"
 MODEL_DIR = RESULTS / "saved_models"
@@ -224,7 +224,7 @@ if missing:
 st.markdown(f"""
 <div class="hero">
   <div class="eyebrow">MIBPPM / BENCH BLAST PERFORMANCE</div>
-  <h1>Research analysis console</h1>
+  <h1>Mathematical + AI comparison console</h1>
   <div class="hero-sub">Compare the Kuznetsov equation with an AI fragmentation estimate, inspect parameter responses, and export calculation results.</div>
 </div>
 """, unsafe_allow_html=True)
@@ -235,7 +235,7 @@ for col, label, val in zip(rcols, ["DATA RECORDS", "BLAST GROUPS", "MODEL INPUTS
     col.markdown(f'<div class="output-card"><div class="kicker">{label}</div><div class="output-value">{val}</div></div>', unsafe_allow_html=True)
 
 st.markdown('<div class="rule"></div>', unsafe_allow_html=True)
-tab_predict, tab_formula, tab_sensitivity, tab_validation, tab_data = st.tabs(["PREDICTION", "FORMULA vs AI · X50", "PARAMETER RESPONSE", "MODEL VALIDATION", "DATA PROFILE"])
+tab_formula, tab_predict, tab_sensitivity, tab_validation, tab_data = st.tabs(["FORMULA + AI · X50", "PREDICTION", "PARAMETER RESPONSE", "MODEL VALIDATION", "DATA PROFILE"])
 
 # ---- Prediction ----
 with tab_predict:
