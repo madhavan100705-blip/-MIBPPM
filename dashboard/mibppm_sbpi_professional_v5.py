@@ -1,5 +1,6 @@
 from pathlib import Path
 import json
+import sys
 import warnings
 
 import joblib
@@ -9,6 +10,11 @@ import streamlit as st
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 from sklearn.linear_model import LinearRegression
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
 from backend.app.engine.fragmentation import kuznesov_mean_fragment_size_cm
 
 # -----------------------------------------------------------------------------
@@ -17,7 +23,7 @@ from backend.app.engine.fragmentation import kuznesov_mean_fragment_size_cm
 # Does not modify training data, models, or experiment outputs.
 # -----------------------------------------------------------------------------
 st.set_page_config(page_title="MIBPPM | Research Dashboard", page_icon="⛏", layout="wide")
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = PROJECT_ROOT
 RESULTS = ROOT / "results" / "sbpi"
 MODEL_DIR = RESULTS / "saved_models"
 FRAGMENTATION_DATA = ROOT / "data" / "raw" / "caos_surface_confirmed.csv"
