@@ -72,66 +72,50 @@ st.markdown(f"""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap');
 :root {{ --ink:{INK}; --muted:{MUTED}; --teal:{TEAL}; --paper:{PAPER}; }}
-html, body, [class*="css"] {{ font-family:'DM Sans',sans-serif; color:var(--ink); }}
-.stApp {{ background:linear-gradient(180deg,#F7F9F8 0%,#F1F5F4 100%); }}
-[data-testid="stHeader"] {{ background:rgba(245,247,246,.94); }}
-.block-container {{ max-width:1500px; padding:1.5rem 2.5rem 2rem; }}
-h1,h2,h3 {{ font-family:'Manrope',sans-serif !important; color:{INK} !important; letter-spacing:-.035em; }}
+html, body, [class*="css"] {{ font-family:'DM Sans',sans-serif; color:#172B3A; }}
+.stApp {{ background:#F2F5F7; }}
+[data-testid="stHeader"] {{ background:rgba(242,245,247,.94); }}
+.block-container {{ max-width:1580px; padding:1.4rem 2.8rem 3rem; }}
+h1,h2,h3 {{ font-family:'Manrope',sans-serif !important; color:#172B3A !important; letter-spacing:-.035em; }}
 h1 {{ font-size:2.35rem !important; font-weight:800 !important; }}
 h2 {{ font-size:1.35rem !important; font-weight:750 !important; }}
 h3 {{ font-size:1.04rem !important; font-weight:700 !important; }}
-p, label {{ color:{INK}; }}
+p, label {{ color:#263B49; }}
 [data-testid="stSidebar"] {{ display:none; }}
-section[data-testid="stMain"] > div {{ max-width:100%; }}
-[data-testid="stMetric"] {{ background:#FFFFFF; border:1px solid #E2E8E6; border-radius:14px; padding:15px 18px; box-shadow:0 2px 9px rgba(24,37,46,.035); }}
-[data-testid="stMetricLabel"] {{ color:{MUTED} !important; font-size:.78rem; font-weight:600; }}
-[data-testid="stMetricValue"] {{ color:{INK} !important; font-family:'DM Sans',sans-serif; font-size:1.5rem; font-weight:700; }}
-[data-testid="stTabs"] button {{ font-weight:700; color:{MUTED}; }}
-[data-testid="stTabs"] button[aria-selected="true"] {{ color:{TEAL} !important; border-bottom-color:{TEAL} !important; }}
-div[data-baseweb="input"] > div, div[data-baseweb="select"] > div {{ border-radius:8px !important; background:#fff; }}
-.stButton > button, .stDownloadButton > button {{ background:{TEAL}; color:#fff; border:0; border-radius:8px; font-weight:700; min-height:43px; }}
+[data-testid="stTabs"] {{ gap:.35rem; border-bottom:1px solid #D7E0E5; margin:1.15rem 0 1.25rem; }}
+[data-testid="stTabs"] button {{ background:#E8EEF1; border:1px solid transparent; border-radius:9px 9px 0 0; padding:.72rem 1rem; font-weight:700; color:#617582; }}
+[data-testid="stTabs"] button[aria-selected="true"] {{ background:#FFFFFF; color:{TEAL} !important; border:1px solid #D7E0E5; border-bottom:2px solid {TEAL} !important; }}
+[data-testid="stTabContent"] {{ background:#FFFFFF; border:1px solid #E0E7EB; border-radius:0 0 16px 16px; padding:1.3rem 1.5rem 1.6rem; box-shadow:0 8px 24px rgba(22,43,58,.045); }}
+[data-testid="stMetric"] {{ background:#FFFFFF; border:1px solid #DFE7EA; border-radius:14px; padding:15px 18px; box-shadow:0 3px 12px rgba(24,37,46,.035); }}
+[data-testid="stMetricLabel"] {{ color:#6B7E89 !important; font-size:.75rem; font-weight:700; letter-spacing:.045em; }}
+[data-testid="stMetricValue"] {{ color:#172B3A !important; font-family:'DM Sans',sans-serif; font-size:1.5rem; font-weight:700; }}
+div[data-baseweb="input"] > div, div[data-baseweb="select"] > div {{ border-radius:9px !important; background:#fff; border-color:#D6E0E5; }}
+.stButton > button, .stDownloadButton > button {{ background:{TEAL}; color:#fff; border:0; border-radius:9px; font-weight:700; min-height:44px; padding:.45rem 1rem; }}
 .stButton > button:hover, .stDownloadButton > button:hover {{ background:#066A6E; color:#fff; border:0; }}
-.hero {{ background:linear-gradient(115deg,#FFFFFF 12%,#E8F4F1 100%); border:1px solid #DCE6E3; border-radius:18px; padding:25px 30px 23px; margin:3px 0 22px; }}
-.eyebrow {{ color:{TEAL}; font-size:.72rem; font-weight:700; letter-spacing:.14em; text-transform:uppercase; margin-bottom:8px; }}
-.hero-sub {{ color:{MUTED}; font-size:.98rem; margin-top:7px; max-width:850px; }}
-.rule {{ border-top:1px solid #DCE4E1; margin:18px 0; }}
-.kicker {{ color:{MUTED}; text-transform:uppercase; letter-spacing:.1em; font-size:.7rem; font-weight:700; }}
-.small-note {{ color:{MUTED}; font-size:.83rem; }}
-.output-card {{ background:#fff; border:1px solid #E1E8E5; border-radius:13px; padding:16px 18px; min-height:112px; box-shadow:0 2px 9px rgba(24,37,46,.035); }}
-.output-name {{ color:{MUTED}; font-size:.78rem; font-weight:700; }}
-.output-value {{ font-family:'DM Mono',monospace; color:{INK}; font-size:1.55rem; font-weight:500; margin-top:8px; }}
-.output-unit {{ color:{MUTED}; font-size:.76rem; }}
-/* High-contrast prediction page: explicit text colors for Streamlit themes */
-[data-testid="stAppViewContainer"] .output-card,
-[data-testid="stAppViewContainer"] .output-card * {{
-    opacity:1 !important;
-}}
-[data-testid="stAppViewContainer"] .output-card .kicker,
-[data-testid="stAppViewContainer"] .output-card .output-name,
-[data-testid="stAppViewContainer"] .output-card .small-note {{
-    color:{MUTED} !important;
-}}
-[data-testid="stAppViewContainer"] .output-card .output-value {{
-    color:{INK} !important;
-}}
-[data-testid="stAppViewContainer"] .output-card .output-unit {{
-    color:#52636B !important;
-}}
-[data-testid="stAppViewContainer"] [data-testid="stMetricLabel"],
-[data-testid="stAppViewContainer"] [data-testid="stMetricValue"] {{
-    color:{INK} !important;
-}}
-[data-testid="stAppViewContainer"] .stMarkdown p,
-[data-testid="stAppViewContainer"] .stMarkdown label {{
-    color:{INK} !important;
-}}
-[data-testid="stAppViewContainer"] .stButton button,
-[data-testid="stAppViewContainer"] .stDownloadButton button {{
-    color:#FFFFFF !important;
-}}
-
-.status-chip {{ display:inline-block; color:{TEAL}; background:{TEAL_LIGHT}; border-radius:4px; padding:3px 7px; font-size:.68rem; font-weight:700; letter-spacing:.04em; }}
+.hero {{ background:linear-gradient(115deg,#102F43 0%,#155B67 66%,#15817F 100%); border:0; border-radius:20px; padding:27px 32px 26px; margin:4px 0 20px; box-shadow:0 12px 28px rgba(18,55,69,.15); }}
+.hero h1 {{ color:#FFFFFF !important; margin:0 !important; }}
+.eyebrow {{ color:#8FE2D4; font-size:.7rem; font-weight:700; letter-spacing:.15em; text-transform:uppercase; margin-bottom:8px; }}
+.hero-sub {{ color:#D6E9EA !important; font-size:.98rem; margin-top:8px; max-width:900px; line-height:1.55; }}
+.rule {{ border-top:1px solid #E2E9EC; margin:18px 0; }}
+.kicker {{ color:#6B7E89; text-transform:uppercase; letter-spacing:.1em; font-size:.68rem; font-weight:700; }}
+.small-note {{ color:#657985 !important; font-size:.84rem; }}
+.output-card {{ background:#fff; border:1px solid #DFE7EA; border-radius:14px; padding:16px 18px; min-height:110px; box-shadow:0 3px 12px rgba(24,37,46,.035); }}
+.output-name {{ color:#6B7E89; font-size:.77rem; font-weight:700; }}
+.output-value {{ font-family:'DM Mono',monospace; color:#172B3A; font-size:1.5rem; font-weight:500; margin-top:8px; }}
+.output-unit {{ color:#657985; font-size:.76rem; }}
+.status-chip {{ display:inline-block; color:{TEAL}; background:#E1F4F0; border-radius:999px; padding:4px 9px; font-size:.68rem; font-weight:700; letter-spacing:.04em; }}
+[data-testid="stAppViewContainer"] .output-card, [data-testid="stAppViewContainer"] .output-card * {{ opacity:1 !important; }}
+[data-testid="stAppViewContainer"] .output-card .kicker, [data-testid="stAppViewContainer"] .output-card .output-name, [data-testid="stAppViewContainer"] .output-card .small-note {{ color:#657985 !important; }}
+[data-testid="stAppViewContainer"] .output-card .output-value {{ color:#172B3A !important; }}
+[data-testid="stAppViewContainer"] .output-card .output-unit {{ color:#52636B !important; }}
+[data-testid="stAppViewContainer"] [data-testid="stMetricLabel"] {{ color:#6B7E89 !important; }}
+[data-testid="stAppViewContainer"] [data-testid="stMetricValue"] {{ color:#172B3A !important; }}
+[data-testid="stAppViewContainer"] .stMarkdown p, [data-testid="stAppViewContainer"] .stMarkdown label {{ color:#263B49 !important; }}
+[data-testid="stAppViewContainer"] .stButton button, [data-testid="stAppViewContainer"] .stDownloadButton button {{ color:#FFFFFF !important; }}
+[data-testid="stExpander"] {{ border:1px solid #DFE7EA; border-radius:12px; background:#FBFCFD; }}
+[data-testid="stDataFrame"] {{ border:1px solid #E1E8EB; border-radius:10px; }}
 footer {{ visibility:hidden; }}
+@media(max-width:900px) {{ .block-container {{ padding:1rem .8rem 2rem; }} .hero {{ padding:22px 20px; }} h1 {{ font-size:1.8rem !important; }} [data-testid="stTabContent"] {{ padding:1rem; }} }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -224,9 +208,9 @@ if missing:
 # Main dashboard header
 st.markdown(f"""
 <div class="hero">
-  <div class="eyebrow">MIBPPM / BENCH BLAST PERFORMANCE</div>
-  <h1>Mathematical + AI comparison console</h1>
-  <div class="hero-sub">Compare the Kuznetsov equation with an AI fragmentation estimate, inspect parameter responses, and export calculation results.</div>
+  <div class="eyebrow">MIBPPM · BLAST INTELLIGENCE WORKSPACE</div>
+  <h1>Make every blast result easier to understand.</h1>
+  <div class="hero-sub">Run a Kuznetsov fragmentation calculation beside the research AI estimate, explore model response across blast inputs, and export a complete calculation report.</div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -236,7 +220,7 @@ for col, label, val in zip(rcols, ["DATA RECORDS", "BLAST GROUPS", "MODEL INPUTS
     col.markdown(f'<div class="output-card"><div class="kicker">{label}</div><div class="output-value">{val}</div></div>', unsafe_allow_html=True)
 
 st.markdown('<div class="rule"></div>', unsafe_allow_html=True)
-tab_formula, tab_predict, tab_sensitivity, tab_validation, tab_data = st.tabs(["FORMULA + AI · X50", "PREDICTION", "PARAMETER RESPONSE", "MODEL VALIDATION", "DATA PROFILE"])
+tab_formula, tab_predict, tab_sensitivity, tab_validation, tab_data = st.tabs(["01 · FORMULA × AI", "02 · BLAST PREDICTION", "03 · RESPONSE LAB", "04 · MODEL QUALITY", "05 · DATA PROFILE"])
 
 # ---- Prediction ----
 with tab_predict:
