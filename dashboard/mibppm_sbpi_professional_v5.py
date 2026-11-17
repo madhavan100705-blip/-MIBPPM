@@ -171,7 +171,7 @@ def kuznesov_x50_m(rock_factor, burden_m, spacing_m, bench_height_m, powder_fact
 
 
 def build_response_workbook(target, base_inputs, prediction, curve_rows):
-    """Create an Excel report with the selected output and five native Excel charts."""
+    """Create an Excel report with summary, plotted values, and native charts."""
     output = io.BytesIO()
     workbook = xlsxwriter.Workbook(output, {"in_memory": True})
     title_fmt = workbook.add_format({"bold": True, "font_size": 20, "font_color": "#FFFFFF", "bg_color": "#153D52", "valign": "vcenter"})
@@ -179,14 +179,14 @@ def build_response_workbook(target, base_inputs, prediction, curve_rows):
     section_fmt = workbook.add_format({"bold": True, "font_size": 12, "font_color": "#153D52", "bottom": 1, "bottom_color": "#D6E1E6"})
     header_fmt = workbook.add_format({"bold": True, "font_color": "#FFFFFF", "bg_color": "#087E83", "text_wrap": True, "valign": "vcenter"})
     value_fmt = workbook.add_format({"font_color": "#193342", "num_format": "0.0000"})
-    note_fmt = workbook.add_format({"font_color": "#64747D", "italic": True, "text_wrap": True})
+    note_fmt = workbook.add_format({"font_color": "#526B78", "italic": True, "text_wrap": True})
 
     results = workbook.add_worksheet("Results")
     results.set_column("A:A", 34)
     results.set_column("B:B", 22)
     results.merge_range("A1:B1", "MIBPPM · Blast calculation report", title_fmt)
     results.set_row(0, 34)
-    results.merge_range("A2:B2", "Saved model response for the selected blast inputs. Graphs and plotted values are included in this workbook.", subtitle_fmt)
+    results.merge_range("A2:B2", "Saved model estimate, reference inputs, and five input response analyses.", subtitle_fmt)
     results.write("A4", "Selected result", section_fmt)
     results.write("A5", target)
     results.write_number("B5", float(prediction), value_fmt)
@@ -198,10 +198,10 @@ def build_response_workbook(target, base_inputs, prediction, curve_rows):
         results.write(row_num, 0, name)
         results.write_number(row_num, 1, float(value), value_fmt)
     note_row = 10 + len(base_inputs)
-    results.merge_range(note_row, 0, note_row + 1, 1, "The response curves vary one input at a time and hold the other inputs at the reference settings. The saved model is linear, so straight response lines are expected.", note_fmt)
+    results.merge_range(note_row, 0, note_row + 1, 1, "Each response varies one input across its observed dataset range while holding the other inputs at the reference settings. Straight lines are expected from the saved Linear Regression model. The combined chart makes the different input effects directly comparable.", note_fmt)
     results.freeze_panes(4, 0)
 
-    curve_sheet = workbook.add_worksheet("Curve data")
+    curve_sheet = workbook.add_worksheet("Model curves")
     columns = list(curve_rows[0].keys()) if curve_rows else []
     curve_sheet.write_row(0, 0, columns, header_fmt)
     for row_num, row in enumerate(curve_rows, start=1):
@@ -224,25 +224,42 @@ def build_response_workbook(target, base_inputs, prediction, curve_rows):
     charts.set_column("A:P", 12)
     charts.merge_range("A1:P1", f"{target} · parameter response graphs", title_fmt)
     charts.set_row(0, 34)
+    combined = workbook.add_chart({"type": "scatter", "subtype": "straight"})
+    colors = ["#087E83", "#C58A35", "#5574A3", "#B85C50", "#8064A2"]
+    for feature_num, feature in enumerate(FEATURES):
+        start_row = 1 + feature_num * 60
+        end_row = start_row + 59
+        combined.add_series({
+            "name": feature,
+            "categories": ["Model curves", start_row, index["Input range (%)"], end_row, index["Input range (%)"]],
+            "values": ["Model curves", start_row, index["Model estimate"], end_row, index["Model estimate"]],
+            "line": {"color": colors[feature_num], "width": 2.5},
+            "marker": {"type": "none"},
+        })
+    combined.set_title({"name": f"Compare all five input effects on {target}"})
+    combined.set_x_axis({"name": "Position within each observed input range (%)", "min": 0, "max": 100, "major_unit": 20, "major_gridlines": {"visible": False}})
+    combined.set_y_axis({"name": f"{target} ({UNITS[target]})", "major_gridlines": {"visible": True, "line": {"color": "#E5ECEF"}}})
+    combined.set_legend({"position": "bottom"})
+    combined.set_size({"width": 1200, "height": 430})
+    charts.insert_chart("A3", combined)
+
     for feature_num, feature in enumerate(FEATURES):
         start_row = 1 + feature_num * 60
         end_row = start_row + 59
         chart = workbook.add_chart({"type": "scatter", "subtype": "straight"})
         chart.add_series({
             "name": f"{target} model response",
-            "categories": ["Curve data", start_row, index["Parameter value"], end_row, index["Parameter value"]],
-            "values": ["Curve data", start_row, index["Model estimate"], end_row, index["Model estimate"]],
-            "line": {"color": "#087E83", "width": 2.5},
+            "categories": ["Model curves", start_row, index["Parameter value"], end_row, index["Parameter value"]],
+            "values": ["Model curves", start_row, index["Model estimate"], end_row, index["Model estimate"]],
+            "line": {"color": colors[feature_num], "width": 2.5},
             "marker": {"type": "none"},
         })
-        chart.set_title({"name": f"{target} by {feature}", "name_font": {"name": "Aptos Display", "size": 12, "bold": True, "color": "#193342"}})
-        chart.set_x_axis({"name": feature, "name_font": {"color": "#526B78"}, "num_font": {"color": "#526B78"}, "major_gridlines": {"visible": False}})
-        chart.set_y_axis({"name": f"Predicted {target} ({UNITS[target]})", "name_font": {"color": "#526B78"}, "num_font": {"color": "#526B78"}, "major_gridlines": {"visible": True, "line": {"color": "#E5ECEF"}}})
+        chart.set_title({"name": f"{target} by {feature}"})
+        chart.set_x_axis({"name": feature, "major_gridlines": {"visible": False}})
+        chart.set_y_axis({"name": f"{target} ({UNITS[target]})", "major_gridlines": {"visible": True, "line": {"color": "#E5ECEF"}}})
         chart.set_legend({"none": True})
-        chart.set_chartarea({"border": {"none": True}, "fill": {"color": "#FFFFFF"}})
-        chart.set_plotarea({"border": {"color": "#E2E9EC"}, "fill": {"color": "#FFFFFF"}})
         chart.set_size({"width": 650, "height": 340})
-        row = 2 + (feature_num // 2) * 21
+        row = 27 + (feature_num // 2) * 21
         col = 0 if feature_num % 2 == 0 else 8
         charts.insert_chart(row, col, chart)
     workbook.close()
@@ -578,39 +595,29 @@ with tab_formula:
         )
 
 # ---- Sensitivity: every input parameter for one selected output ----
+
 with tab_sensitivity:
-    st.markdown("### Parameter sensitivity")
+    st.markdown("### How each input affects the selected output")
     st.markdown(
-        '<p class="small-note">Select an output to inspect how each of the five model inputs changes its estimate. '
-        'Each panel varies one input while holding the other four constant.</p>',
-        unsafe_allow_html=True
+        '<p class="small-note">Each colored curve varies one input across its observed range while holding the other four at their reference settings. The comparison uses a normalized input range so the five model effects are easy to compare. The saved model is linear, so each response is a straight line.</p>',
+        unsafe_allow_html=True,
     )
 
-    selected_target = st.selectbox(
-        "Predicted output",
-        TARGETS,
-        key="sbpi_v3_sensitivity_target"
-    )
+    selected_target = st.selectbox("Predicted output", TARGETS, key="sbpi_v3_sensitivity_target")
     base = st.session_state.get("sbpi_v2_inputs", DEFAULTS)
-    base = {f: float(base.get(f, DEFAULTS[f])) for f in FEATURES}
+    base = {feature: float(base.get(feature, DEFAULTS[feature])) for feature in FEATURES}
 
     st.markdown("**Reference input settings**")
     ref_cols = st.columns(5)
     for col, feature in zip(ref_cols, FEATURES):
         col.metric(feature, f"{base[feature]:.3f}")
 
-    st.caption(
-        "The shaded region represents the observed range in the research dataset. "
-        "A straight response line is expected from the currently selected Linear Regression model; "
-        "it is not evidence of a nonlinear physical relationship."
-    )
-
     curve_rows = []
+    impact_rows = []
     for feature in FEATURES:
         observed = numeric(data[feature])
         dmin, dmax = float(observed.min()), float(observed.max())
-        pad = max((dmax - dmin) * 0.08, 0.01)
-        xgrid = np.linspace(dmin - pad, dmax + pad, 60)
+        xgrid = np.linspace(dmin, dmax, 60)
         rows = []
         for xv in xgrid:
             row = dict(base)
@@ -618,75 +625,113 @@ with tab_sensitivity:
             rows.append(row)
         curve_frame = pd.DataFrame(rows, columns=FEATURES)
         predictions = np.asarray(models[selected_target].predict(curve_frame), dtype=float).reshape(-1)
+        width = max(dmax - dmin, 1e-12)
+        reference_position = 100.0 * (base[feature] - dmin) / width
         for xv, prediction_value in zip(xgrid, predictions):
             curve_rows.append({
                 "Output": selected_target,
                 "Output unit": UNITS[selected_target],
                 "Varied parameter": feature,
                 "Parameter value": float(xv),
+                "Input range (%)": 100.0 * (float(xv) - dmin) / width,
+                "Reference input": base[feature],
+                "Reference range position (%)": reference_position,
                 "Model estimate": float(prediction_value),
-                "Reference setting": base[feature],
-                "Within observed range": bool(dmin <= xv <= dmax),
+                "Change from reference": float(prediction_value - float(np.asarray(models[selected_target].predict(pd.DataFrame([base], columns=FEATURES))).reshape(-1)[0])),
+                "Within observed range": True,
                 **{f"Held input · {name}": value for name, value in base.items() if name != feature},
             })
+        delta = float(predictions[-1] - predictions[0])
+        impact_rows.append({
+            "Parameter": feature,
+            "Change across observed range": delta,
+            "Absolute change": abs(delta),
+            "Direction": "Increase" if delta >= 0 else "Decrease",
+        })
 
-    st.markdown("### Parameter response")
-    st.caption("Choose one input at a time for a larger, easier-to-read model response graph. The shaded band shows the observed research-data range; the gold marker shows the reference setting.")
-    selected_parameter = st.selectbox("Parameter to plot", FEATURES, key="sbpi_v4_response_parameter")
-    selected_curve = pd.DataFrame(curve_rows)
-    selected_curve = selected_curve[selected_curve["Varied parameter"] == selected_parameter]
-    observed = numeric(data[selected_parameter])
-    dmin, dmax = float(observed.min()), float(observed.max())
-    current_x = base[selected_parameter]
-    current_y = float(np.asarray(models[selected_target].predict(pd.DataFrame([base], columns=FEATURES))).reshape(-1)[0])
+    st.markdown("### Parameter response comparison")
+    col_curve, col_impact = st.columns([1.65, 1], gap="large")
+    color_map = {
+        FEATURES[0]: TEAL,
+        FEATURES[1]: AMBER,
+        FEATURES[2]: "#5574A3",
+        FEATURES[3]: RED,
+        FEATURES[4]: "#8064A2",
+    }
+    curve_df = pd.DataFrame(curve_rows)
+    with col_curve:
+        combined_chart = px.line(
+            curve_df,
+            x="Input range (%)",
+            y="Model estimate",
+            color="Varied parameter",
+            color_discrete_map=color_map,
+            hover_data={"Parameter value": ":.3f", "Input range (%)": ":.1f", "Model estimate": ":.3f"},
+            labels={
+                "Input range (%)": "Position within observed input range (%)",
+                "Model estimate": f"Predicted {selected_target} ({UNITS[selected_target]})",
+                "Varied parameter": "Input varied",
+            },
+        )
+        combined_chart.update_traces(line=dict(width=3.2))
+        combined_chart.update_layout(
+            title={"text": f"Five input responses · {selected_target}", "x": 0.02, "xanchor": "left", "font": {"color": INK, "size": 17}},
+            template="plotly_white", height=500, margin=dict(l=24, r=22, t=76, b=50),
+            font=dict(family="DM Sans, sans-serif", color=INK, size=13),
+            paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="#FFFFFF",
+            hovermode="x unified",
+            legend=dict(orientation="h", y=-0.24, x=0, title=None, font=dict(color=INK, size=11)),
+        )
+        combined_chart.update_xaxes(range=[0, 100], title_font=dict(color=INK), tickfont=dict(color=MUTED), showgrid=True, gridcolor=GRID, zeroline=False)
+        combined_chart.update_yaxes(title_font=dict(color=INK), tickfont=dict(color=MUTED), showgrid=True, gridcolor=GRID, zeroline=False)
+        st.plotly_chart(combined_chart, use_container_width=True, key="sbpi_normalized_parameter_comparison")
 
-    response_chart = px.line(
-        selected_curve, x="Parameter value", y="Model estimate",
-        labels={"Parameter value": selected_parameter, "Model estimate": f"Predicted {selected_target} ({UNITS[selected_target]})"},
-    )
-    response_chart.update_traces(line=dict(color=TEAL, width=4), hovertemplate=f"{selected_parameter}: %{{x:.3f}}<br>Predicted {selected_target}: %{{y:.3f}} {UNITS[selected_target]}<extra></extra>")
-    response_chart.add_vrect(x0=dmin, x1=dmax, fillcolor=TEAL, opacity=0.08, line_width=0, layer="below", annotation_text="Observed data range", annotation_position="top left", annotation_font=dict(color=TEAL, size=11))
-    response_chart.add_vline(x=current_x, line_width=1.5, line_dash="dot", line_color=AMBER)
-    response_chart.add_scatter(x=[current_x], y=[current_y], mode="markers", name="Reference setting", marker=dict(color=AMBER, size=12, line=dict(color="#FFFFFF", width=2)), hovertemplate=f"Reference setting<br>{selected_parameter}: %{{x:.3f}}<br>Predicted {selected_target}: %{{y:.3f}} {UNITS[selected_target]}<extra></extra>")
-    response_chart.update_layout(
-        title={"text": f"{selected_target} response to {selected_parameter}", "x": 0.02, "xanchor": "left"},
-        template="plotly_white", height=500, margin=dict(l=25, r=28, t=72, b=45),
-        font=dict(family="DM Sans, sans-serif", color=INK, size=13),
-        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="#FFFFFF", hovermode="x unified",
-        legend=dict(orientation="h", y=1.08, x=0.02, title=None),
-    )
-    response_chart.update_xaxes(title_text=selected_parameter, showgrid=True, gridcolor=GRID, zeroline=False)
-    response_chart.update_yaxes(title_text=f"Predicted {selected_target} ({UNITS[selected_target]})", showgrid=True, gridcolor=GRID, zeroline=False)
-    st.plotly_chart(response_chart, use_container_width=True, key="sbpi_single_parameter_response")
+    with col_impact:
+        impact_df = pd.DataFrame(impact_rows).sort_values("Absolute change")
+        impact_chart = px.bar(
+            impact_df,
+            x="Change across observed range",
+            y="Parameter",
+            color="Direction",
+            color_discrete_map={"Increase": TEAL, "Decrease": AMBER},
+            orientation="h",
+            text="Change across observed range",
+            labels={"Change across observed range": f"Change in {selected_target} ({UNITS[selected_target]})", "Parameter": ""},
+        )
+        impact_chart.update_traces(texttemplate="%{x:+.3f}", textposition="outside", cliponaxis=False)
+        impact_chart.update_layout(
+            title={"text": "Model change from low to high input", "x": 0.02, "xanchor": "left", "font": {"color": INK, "size": 16}},
+            template="plotly_white", height=500, margin=dict(l=10, r=58, t=76, b=50),
+            font=dict(family="DM Sans, sans-serif", color=INK, size=12),
+            paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="#FFFFFF",
+            showlegend=False,
+        )
+        impact_chart.update_xaxes(title_font=dict(color=INK), tickfont=dict(color=MUTED), showgrid=True, gridcolor=GRID, zeroline=True, zerolinecolor="#82939B")
+        impact_chart.update_yaxes(title_text="", tickfont=dict(color=INK), showgrid=False)
+        st.plotly_chart(impact_chart, use_container_width=True, key="sbpi_parameter_impact")
 
-    curve_csv = pd.DataFrame(curve_rows).to_csv(index=False).encode("utf-8-sig")
+    curve_csv = curve_df.to_csv(index=False).encode("utf-8-sig")
+    safe_target = selected_target.lower().replace(" ", "_").replace("/", "_")
     st.download_button(
-        "DOWNLOAD ALL FIVE PARAMETER RESPONSE CURVES · CSV",
+        "DOWNLOAD ALL FIVE RESPONSE CURVES · CSV",
         curve_csv,
-        f"mibppm_{selected_target.lower().replace(' ', '_').replace('/', '_')}_response_curves.csv",
+        f"mibppm_{safe_target}_response_curves.csv",
         "text/csv",
         key="download_response_curves",
     )
-    excel_bytes = build_response_workbook(
-        selected_target, base, current_y, curve_rows
-    )
-    excel_name = f"mibppm_{selected_target.lower().replace(' ', '_').replace('/', '_')}_calculation_and_graphs.xlsx"
+    current_prediction = float(np.asarray(models[selected_target].predict(pd.DataFrame([base], columns=FEATURES))).reshape(-1)[0])
+    excel_bytes = build_response_workbook(selected_target, base, current_prediction, curve_rows)
     st.download_button(
         "DOWNLOAD RESULTS + GRAPHS · EXCEL",
         excel_bytes,
-        excel_name,
+        f"mibppm_{safe_target}_calculation_and_graphs.xlsx",
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         key="download_response_excel",
     )
-    st.caption("Curve data covers each of the five inputs at 60 points, holding the other four at the reference settings. These are model responses, not equation outputs.")
-
+    st.caption("The Excel file includes the selected output, reference inputs, model response values for all five parameters, a combined comparison graph, and a separate graph for each parameter. It does not include the underlying source records.")
     st.markdown('<div class="rule"></div>', unsafe_allow_html=True)
     st.markdown("**Interpretation**")
-    st.caption(
-        "These are model sensitivity curves, not independent physical equations. "
-        "They show the fitted model's response when one input changes and the others remain fixed. "
-        "Because the saved SBPI models are Linear Regression pipelines, the curves will be straight lines."
-    )
+    st.caption("All five curves come from the saved Linear Regression model. Their slope and the low-to-high impact bar show how strongly the model changes its estimate when each input varies across the observed range. These are model responses, not independent equation results.")
 
 # ---- Validation diagnostics, separate per target ----
 with tab_validation:
