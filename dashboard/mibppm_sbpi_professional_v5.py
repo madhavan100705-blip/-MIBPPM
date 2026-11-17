@@ -9,6 +9,7 @@ import pandas as pd
 import streamlit as st
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
+import plotly.express as px
 from sklearn.linear_model import LinearRegression
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -22,7 +23,7 @@ from backend.app.engine.fragmentation import kuznesov_mean_fragment_size_cm
 # Uses existing local SBPI dataset, saved pipelines, grouped OOF predictions.
 # Does not modify training data, models, or experiment outputs.
 # -----------------------------------------------------------------------------
-st.set_page_config(page_title="MIBPPM | Formula + AI X50", page_icon="⛏", layout="wide")
+st.set_page_config(page_title="MIBPPM | Blast analytics", page_icon="⛏", layout="wide")
 ROOT = PROJECT_ROOT
 RESULTS = ROOT / "results" / "sbpi"
 MODEL_DIR = RESULTS / "saved_models"
@@ -72,31 +73,31 @@ st.markdown(f"""
 @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap');
 :root {{ --ink:{INK}; --muted:{MUTED}; --teal:{TEAL}; --paper:{PAPER}; }}
 html, body, [class*="css"] {{ font-family:'DM Sans',sans-serif; color:var(--ink); }}
-.stApp {{ background:var(--paper); }}
+.stApp {{ background:linear-gradient(180deg,#F7F9F8 0%,#F1F5F4 100%); }}
 [data-testid="stHeader"] {{ background:rgba(245,247,246,.94); }}
-.block-container {{ max-width:100%; padding:1.25rem 2.2rem .8rem 2.2rem; }}
+.block-container {{ max-width:1500px; padding:1.5rem 2.5rem 2rem; }}
 h1,h2,h3 {{ font-family:'Manrope',sans-serif !important; color:{INK} !important; letter-spacing:-.035em; }}
-h1 {{ font-size:2.05rem !important; font-weight:800 !important; }}
+h1 {{ font-size:2.35rem !important; font-weight:800 !important; }}
 h2 {{ font-size:1.35rem !important; font-weight:750 !important; }}
 h3 {{ font-size:1.04rem !important; font-weight:700 !important; }}
 p, label {{ color:{INK}; }}
 [data-testid="stSidebar"] {{ display:none; }}
 section[data-testid="stMain"] > div {{ max-width:100%; }}
-[data-testid="stMetric"] {{ background:#FFFFFF; border:1px solid #E2E8E6; border-radius:12px; padding:13px 16px; box-shadow:none; }}
+[data-testid="stMetric"] {{ background:#FFFFFF; border:1px solid #E2E8E6; border-radius:14px; padding:15px 18px; box-shadow:0 2px 9px rgba(24,37,46,.035); }}
 [data-testid="stMetricLabel"] {{ color:{MUTED} !important; font-size:.78rem; font-weight:600; }}
-[data-testid="stMetricValue"] {{ color:{INK} !important; font-family:'DM Mono',monospace; font-size:1.45rem; }}
+[data-testid="stMetricValue"] {{ color:{INK} !important; font-family:'DM Sans',sans-serif; font-size:1.5rem; font-weight:700; }}
 [data-testid="stTabs"] button {{ font-weight:700; color:{MUTED}; }}
 [data-testid="stTabs"] button[aria-selected="true"] {{ color:{TEAL} !important; border-bottom-color:{TEAL} !important; }}
 div[data-baseweb="input"] > div, div[data-baseweb="select"] > div {{ border-radius:8px !important; background:#fff; }}
 .stButton > button, .stDownloadButton > button {{ background:{TEAL}; color:#fff; border:0; border-radius:8px; font-weight:700; min-height:43px; }}
 .stButton > button:hover, .stDownloadButton > button:hover {{ background:#066A6E; color:#fff; border:0; }}
-.hero {{ border-bottom:1px solid #DCE4E1; padding:12px 0 20px 0; margin-bottom:20px; }}
+.hero {{ background:linear-gradient(115deg,#FFFFFF 12%,#E8F4F1 100%); border:1px solid #DCE6E3; border-radius:18px; padding:25px 30px 23px; margin:3px 0 22px; }}
 .eyebrow {{ color:{TEAL}; font-size:.72rem; font-weight:700; letter-spacing:.14em; text-transform:uppercase; margin-bottom:8px; }}
-.hero-sub {{ color:{MUTED}; font-size:.95rem; margin-top:6px; max-width:780px; }}
+.hero-sub {{ color:{MUTED}; font-size:.98rem; margin-top:7px; max-width:850px; }}
 .rule {{ border-top:1px solid #DCE4E1; margin:18px 0; }}
 .kicker {{ color:{MUTED}; text-transform:uppercase; letter-spacing:.1em; font-size:.7rem; font-weight:700; }}
 .small-note {{ color:{MUTED}; font-size:.83rem; }}
-.output-card {{ background:#fff; border:1px solid #E1E8E5; border-radius:11px; padding:15px 17px; min-height:112px; }}
+.output-card {{ background:#fff; border:1px solid #E1E8E5; border-radius:13px; padding:16px 18px; min-height:112px; box-shadow:0 2px 9px rgba(24,37,46,.035); }}
 .output-name {{ color:{MUTED}; font-size:.78rem; font-weight:700; }}
 .output-value {{ font-family:'DM Mono',monospace; color:{INK}; font-size:1.55rem; font-weight:500; margin-top:8px; }}
 .output-unit {{ color:{MUTED}; font-size:.76rem; }}
@@ -320,8 +321,8 @@ with tab_formula:
             frag_modulus = st.number_input("Young’s modulus (GPa)", min_value=0.1, value=30.0, step=1.0, key="frag_modulus")
         with c:
             frag_rock_factor = st.number_input(
-                "Documented rock factor A", min_value=0.0, max_value=30.0, value=0.0, step=0.1,
-                help="Enter a factor justified for your rock mass. Zero leaves the equation comparison disabled.",
+                "Rock factor A · example", min_value=0.0, max_value=30.0, value=8.0, step=0.1,
+                help="8.0 is illustrative only. Replace it with a documented site-specific factor.",
                 key="frag_rock_factor",
             )
             frag_rws = st.number_input("Relative weight strength (RWS)", min_value=1.0, value=100.0, step=1.0, key="frag_rws")
@@ -337,6 +338,7 @@ with tab_formula:
         frag_modulus, actual_x50,
     )
     run_fragmentation = st.button("CALCULATE X50 · FORMULA + AI", type="primary", key="run_x50_comparison")
+    run_fragmentation = run_fragmentation or ("x50_comparison" not in st.session_state and frag_rock_factor > 0)
     if run_fragmentation:
         try:
             if frag_stemming >= frag_bench:
@@ -397,6 +399,7 @@ with tab_formula:
         m1.metric("Kuznetsov-style equation · X50", f"{comparison['math']:.4f} m")
         m2.metric("AI estimate · X50", f"{comparison['ai']:.4f} m")
         m3.metric("AI − equation", f"{comparison['ai'] - comparison['math']:+.4f} m")
+        st.caption("The first comparison uses example factor A = 8.0 and RWS = 100 (ANFO). Replace these with site-verified values before interpreting results.")
         st.caption("Equation form: X50 = A × (V/Q)^0.8 × Q^(1/6) × (115/RWS)^(19/30). V = burden × spacing × bench height; Q = powder factor × V. The code returns cm, converted here to m.")
         st.caption("The AI is a Linear Regression fitted to all measured X50 records in the included research dataset. It is a research estimate, not an independently validated site prediction.")
 
@@ -434,20 +437,30 @@ with tab_formula:
                     "AI X50 (m)": float(ai_value),
                 })
 
-        st.markdown("### Formula and AI response by parameter")
-        st.caption("Each graph varies one AI model parameter at a time across its observed training range. The other AI inputs stay at your entered settings. The equation line changes only where the Kuznetsov equation uses that parameter; it stays flat for factors absent from the equation.")
-        for start in range(0, len(FRAG_FEATURES), 2):
-            graph_cols = st.columns(2, gap="large")
-            for col, feature in zip(graph_cols, FRAG_FEATURES[start:start + 2]):
-                with col:
-                    rows = [r for r in sensitivity_rows if r["Varied parameter"] == FRAG_LABELS[feature]]
-                    graph = pd.DataFrame(rows)
-                    fig, ax = plt.subplots(figsize=(7.2, 4.0), dpi=135)
-                    ax.plot(graph["Parameter value"], graph["Kuznetsov equation X50 (m)"], color=AMBER, linewidth=2.5, label="Kuznetsov equation")
-                    ax.plot(graph["Parameter value"], graph["AI X50 (m)"], color=TEAL, linewidth=2.5, label="AI model")
-                    style_axis(ax, f"X50 response · {FRAG_LABELS[feature]}", FRAG_LABELS[feature], "X50 (m)")
-                    ax.legend(frameon=False, fontsize=8, loc="best")
-                    render_fig(fig)
+        st.markdown("### How each input changes X50")
+        st.caption("Each panel varies one parameter across the measured AI training range with other inputs held constant. Every panel uses the same X50 scale for direct comparison.")
+        graph_data = pd.DataFrame(sensitivity_rows)
+        graph = px.line(
+            graph_data,
+            x="Parameter value",
+            y=["Kuznetsov equation X50 (m)", "AI X50 (m)"],
+            facet_col="Varied parameter",
+            facet_col_wrap=2,
+            category_orders={"Varied parameter": [FRAG_LABELS[f] for f in FRAG_FEATURES]},
+            color_discrete_map={"Kuznetsov equation X50 (m)": AMBER, "AI X50 (m)": TEAL},
+            labels={"Parameter value": "Input value", "value": "X50 (m)", "variable": "Method"},
+        )
+        graph.for_each_annotation(lambda a: a.update(text=a.text.split("=")[-1]))
+        graph.update_traces(line=dict(width=2.8))
+        graph.update_layout(
+            template="plotly_white", height=990, margin=dict(l=18, r=18, t=78, b=24),
+            font=dict(family="DM Sans, sans-serif", color=INK, size=12),
+            paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="#FFFFFF", hovermode="x",
+            legend=dict(orientation="h", y=1.04, x=0, title=None),
+        )
+        graph.update_xaxes(matches=None, showgrid=True, gridcolor=GRID, tickfont=dict(size=10))
+        graph.update_yaxes(matches="y", title_text="X50 (m)", showgrid=True, gridcolor=GRID)
+        st.plotly_chart(graph, use_container_width=True, key="x50_parameter_curves")
 
         report_row = {
             **comparison["inputs"],
@@ -685,4 +698,3 @@ with tab_data:
         render_fig(fig)
 
 st.markdown('<div style="border-top:1px solid #DCE4E1;margin-top:25px;padding-top:13px;color:#7B898C;font-size:.74rem;">MIBPPM · SBPI research dashboard · Model estimates are not operational blast-design instructions.</div>', unsafe_allow_html=True)
-
